@@ -82,10 +82,11 @@ jobs:
             runner: ubuntu-22.04-arm
             target: armv7-unknown-linux-gnueabihf
     steps:
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+
       - name: Setup Rust
         run: |
-          rustup target add ${{ matrix.target }}
-          rustup toolchain install
           cargo install cross
 
       - name: Checkout code
@@ -98,9 +99,9 @@ jobs:
         run: |
            cross install diesel_cli --no-default-features --features 'mysql' --target ${{ matrix.target }} 
 
-      - name: Build SyncStorage
-        run: |
-           cargo install --path ./syncserver --locked --no-default-features --features=syncstorage-db/mysql --features=py_verifier --target ${{ matrix.target }}
+    #   - name: Build SyncStorage
+    #     run: |
+    #        cargo install --path ./syncserver --locked --no-default-features --features=syncstorage-db/mysql --features=py_verifier --target ${{ matrix.target }}
 
 
     #   - name: Upload artifact
