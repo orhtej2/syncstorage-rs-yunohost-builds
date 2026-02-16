@@ -106,7 +106,7 @@ jobs:
         with:
           command: build
           target: ${{ matrix.platform.target }}
-          args: "--bin diesel_cli --no-default-features --features 'mysql' --release"
+          args: "--bin diesel --no-default-features --features 'mysql' --release"
           strip: true
           working-directory: 'diesel'
     #   - name: Publish artifacts and release
