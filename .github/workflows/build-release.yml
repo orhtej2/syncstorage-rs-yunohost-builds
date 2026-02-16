@@ -86,6 +86,7 @@ jobs:
         run: |
           rustup target add ${{ matrix.target }}
           rustup toolchain install
+          cargo install cross
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -95,7 +96,7 @@ jobs:
 
       - name: Build Diesel
         run: |
-           cargo install diesel_cli --no-default-features --features 'mysql' --target ${{ matrix.target }} 
+           cross install diesel_cli --no-default-features --features 'mysql' --target ${{ matrix.target }} 
 
       - name: Build SyncStorage
         run: |
