@@ -95,11 +95,11 @@ jobs:
 
       - name: Build Diesel
         run: |
-           cargo install diesel_cli --path ./diesel_cli-${{ matrix.arch }} --no-default-features --features 'mysql' --target ${{ matrix.target }}
+           cargo install diesel_cli --no-default-features --features 'mysql' --target ${{ matrix.target }} 
 
       - name: Build SyncStorage
         run: |
-           cargo install --path ./syncserver-${{ matrix.arch }} --locked --root $install_dir  --no-default-features --features=syncstorage-db/mysql --features=py_verifier --target ${{ matrix.target }}
+           cargo install --path ./syncserver --locked --no-default-features --features=syncstorage-db/mysql --features=py_verifier --target ${{ matrix.target }}
 
 
     #   - name: Upload artifact
