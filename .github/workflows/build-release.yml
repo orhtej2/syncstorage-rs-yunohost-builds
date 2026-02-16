@@ -88,19 +88,27 @@ jobs:
 
     runs-on: ${{ matrix.platform.runs-on }}
     steps:
-      - name: Checkout
+      - name: Checkout syncstorage
         uses: actions/checkout@v4
         with:
           repository: 'mozilla-services/syncstorage-rs'
           ref: ${{ needs.check-and-prepare.outputs.release_ref }}
+          path: 'syncstorage'
+
+      - name: Checkout diesel
+        uses: actions/checkout@v4
+        with:
+          repository: 'diesel-rs/diesel'
+          path: 'diesel'
 
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v1
         with:
-          command: install
+          command: build
           target: ${{ matrix.platform.target }}
-          args: "diesel_cli --no-default-features --features 'mysql' --locked"
-          strip: false
+          args: "diesel_cli --no-default-features --features 'mysql' --locked --release"
+          strip: true
+          working-directory: 'diesel'
     #   - name: Publish artifacts and release
     #     uses: houseabsolute/actions-rust-release@v0
     #     with:
