@@ -65,39 +65,47 @@ jobs:
   build-release:
     needs: check-and-prepare
     if: needs.check-and-prepare.outputs.release_exists == 'false'
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-          - arch: arm64
-            runner: ubuntu-22.04-arm
-            target: x86_64-unknown-linux-gnu
-          - arch: i686
-            runner: ubuntu-22.04
+        platform:
+        #   - os-name: x86_64
+        #     runs-on: ubuntu-22.04
+        #     target: x86_64-unknown-linux-gnu
+
+          - os-name: i686
+            runs-on: ubuntu-22.04
             target: i686-unknown-linux-gnu
-          - arch: armv7
-            runner: ubuntu-22.04-arm
-            target: armv7-unknown-linux-gnueabihf
+
+          - os-name: arm64
+            runs-on: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-gnu
+
+        #   - os-name: armv7
+        #     runs-on: ubuntu-22.04
+        #     target: armv7-unknown-linux-gnueabihf
+
+          # more targets here ...
+
+    runs-on: ${{ matrix.platform.runs-on }}
     steps:
-      - name: Set up Docker
-        uses: docker/setup-docker-action@v4
-
-      - name: Setup Rust
-        run: |
-          cargo install cross
-
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           repository: 'mozilla-services/syncstorage-rs'
           ref: ${{ needs.check-and-prepare.outputs.release_ref }}
 
-      - name: Build Diesel
-        run: |
-           cross install diesel_cli --no-default-features --features 'mysql' --target ${{ matrix.target }} 
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v1
+        with:
+          command: build
+          target: ${{ matrix.platform.target }}
+          args: "diesel_cli --no-default-features --features 'mysql' --locked --release"
+          strip: true
+    #   - name: Publish artifacts and release
+    #     uses: houseabsolute/actions-rust-release@v0
+    #     with:
+    #       executable-name: ubi
+    #       target: ${{ matrix.platform.target }}
 
     #   - name: Build SyncStorage
     #     run: |
