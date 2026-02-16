@@ -69,9 +69,9 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-        #   - os-name: x86_64
-        #     runs-on: ubuntu-22.04
-        #     target: x86_64-unknown-linux-gnu
+          - os-name: x86_64
+            runs-on: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
 
           - os-name: i686
             runs-on: ubuntu-22.04
@@ -81,9 +81,9 @@ jobs:
             runs-on: ubuntu-22.04-arm
             target: aarch64-unknown-linux-gnu
 
-        #   - os-name: armv7
-        #     runs-on: ubuntu-22.04
-        #     target: armv7-unknown-linux-gnueabihf
+          - os-name: armv7
+            runs-on: ubuntu-22.04
+            target: armv7-unknown-linux-gnueabihf
 
           # more targets here ...
 
@@ -117,9 +117,14 @@ jobs:
     #       executable-name: ubi
     #       target: ${{ matrix.platform.target }}
 
-    #   - name: Build SyncStorage
-    #     run: |
-    #        cargo install --path ./syncserver --locked --no-default-features --features=syncstorage-db/mysql --features=py_verifier --target ${{ matrix.target }}
+      - name: Build SyncStorage
+        uses: houseabsolute/actions-rust-cross@v1
+        with:
+          command: build
+          target: ${{ matrix.platform.target }}
+          args: "--bin syncstorage --no-default-features --features 'syncstorage-db/mysql py_verifier' --release"
+          strip: true
+          working-directory: 'syncstorage'
 
 
     #   - name: Upload artifact
