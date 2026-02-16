@@ -99,7 +99,7 @@ jobs:
         with:
           command: install
           target: ${{ matrix.platform.target }}
-          args: "diesel_cli --no-default-features --features 'mysql' --locked --release"
+          args: "diesel_cli --no-default-features --features 'mysql' --locked"
           strip: true
     #   - name: Publish artifacts and release
     #     uses: houseabsolute/actions-rust-release@v0
