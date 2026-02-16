@@ -97,7 +97,7 @@ jobs:
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v1
         with:
-          command: build
+          command: install
           target: ${{ matrix.platform.target }}
           args: "diesel_cli --no-default-features --features 'mysql' --locked --release"
           strip: true
