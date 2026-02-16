@@ -66,6 +66,7 @@ jobs:
     needs: check-and-prepare
     if: needs.check-and-prepare.outputs.release_exists == 'false'
     strategy:
+      fail-fast: false
       matrix:
         platform:
         #   - os-name: x86_64
