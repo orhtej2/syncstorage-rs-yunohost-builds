@@ -1,0 +1,347 @@
+name: Build SyncStorage-rs release artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+        ref:
+            type: string
+            description: Remote ref to checkout and build
+            required: true
+        version:
+            type: string
+            description: Version to tag in this repo
+            required: true
+  schedule:
+    - cron: '0 */8 * * *'  
+
+permissions:
+  contents: write
+  packages: write
+
+
+jobs:
+  check-and-prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.get_version.outputs.RELEASE_VERSION }}
+      release_ref: ${{ steps.get_version.outputs.RELEASE_REF }}
+      release_exists: ${{ steps.check_release.outputs.exists }}
+      release_id: ${{ steps.get_release_id.outputs.RELEASE_ID }}
+    steps:
+      - name: Copy from params
+        if: ${{ inputs.version != '' }}
+        run: |
+          echo "RELEASE_VERSION=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          echo "RELEASE_REF=${{ inputs.ref }}" >> $GITHUB_OUTPUT
+      - name: Get latest release version
+        id: get_version
+        if: ${{ inputs.version == '' }}
+        run: |
+          LATEST_RELEASE=$(curl -s https://api.github.com/repos/penpot/penpot/releases/latest | jq -r .tag_name)
+          echo "RELEASE_VERSION=${LATEST_RELEASE}" >> $GITHUB_OUTPUT
+          echo "RELEASE_REF=${LATEST_RELEASE}" >> $GITHUB_OUTPUT
+
+      - name: Check if release exists
+        id: check_release
+        run: |
+          RELEASE_TAG="${{ steps.get_version.outputs.RELEASE_VERSION }}-extracted"
+          RELEASE_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/repos/${{ github.repository }}/releases/tags/${RELEASE_TAG})
+          if [ "$RELEASE_EXISTS" = "200" ]; then
+            echo "Release already exists, skipping creation"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Release does not exist, will create"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get Release ID
+        id: get_release_id
+        if: steps.check_release.outputs.exists == 'true'
+        run: |
+          RELEASE_TAG="${{ steps.get_version.outputs.RELEASE_VERSION }}-extracted"
+          RELEASE_ID=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/tags/${RELEASE_TAG} | jq -r .id)
+          echo "RELEASE_ID=${RELEASE_ID}" >> $GITHUB_OUTPUT
+
+  build-release:
+    needs: check-and-prepare
+    if: needs.check-and-prepare.outputs.release_exists == 'false'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - arch: arm64
+            runner: ubuntu-22.04-arm
+            target: x86_64-unknown-linux-gnu
+          - arch: i686
+            runner: ubuntu-22.04
+            target: i686-unknown-linux-gnu
+          - arch: armv7
+            runner: ubuntu-22.04-arm
+            target: armv7-unknown-linux-gnueabihf
+    steps:
+      - name: Setup Rust
+        run: |
+          rustup target add ${{ matrix.target }}
+          rustup toolchain install
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: 'mozilla-services/syncstorage-rs'
+          ref: ${{ needs.check-and-prepare.outputs.release_ref }}
+
+      - name: Build Diesel
+        run: |
+           cargo install diesel_cli --path ./diesel_cli-${{ matrix.arch }} --no-default-features --features 'mysql' --target ${{ matrix.target }}
+
+      - name: Build SyncStorage
+        run: |
+           cargo install --path ./syncserver-${{ matrix.arch }} --locked --root $install_dir  --no-default-features --features=syncstorage-db/mysql --features=py_verifier --target ${{ matrix.target }}
+
+
+    #   - name: Upload artifact
+    #     uses: actions/upload-artifact@v4
+    #     with:
+    #       name: penpot-exporter-${{ matrix.arch }}-extracted
+    #       path: penpot-exporter-${{ matrix.arch }}-extracted.tar.gz
+
+
+#   create-release:
+#     needs: [check-and-prepare, extract-and-release-exporter, extract-and-release-frontend, extract-and-release-backend]
+#     if: needs.check-and-prepare.outputs.release_exists == 'false'
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Create Release
+#         id: create_release
+#         uses: softprops/action-gh-release@v2
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#         with:
+#           tag_name: ${{ needs.check-and-prepare.outputs.release_version }}-extracted
+#           name: Extracted Binaries ${{ needs.check-and-prepare.outputs.release_version }}
+#           body: |
+#             This release contains extracted binaries from the Penpot Docker images for multiple Linux architectures.
+#             Original release: https://github.com/penpot/penpot/releases/tag/${{ needs.check-and-prepare.outputs.release_version }}
+#           draft: false
+#           prerelease: false
+
+#       - name: Download all artifacts
+#         uses: actions/download-artifact@v4
+
+#       - name: Upload Release Assets
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#         run: |
+#           for arch in amd64 arm64; do
+#             asset_path="penpot-exporter-${arch}-extracted/penpot-exporter-${arch}-extracted.tar.gz"
+#             asset_name="penpot-exporter-${arch}-extracted.tar.gz"
+#             curl -L \
+#               -X POST \
+#               -H "Accept: application/vnd.github+json" \
+#               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#               -H "Content-Type: application/gzip" \
+#               -T "${asset_path}" \
+#               "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${asset_name}"
+#           done
+
+#           asset_path="penpot-frontend-extracted/penpot-frontend-extracted.tar.gz"
+#           asset_name="penpot-frontend-extracted.tar.gz"
+#           curl -L \
+#             -X POST \
+#             -H "Accept: application/vnd.github+json" \
+#             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#             -H "Content-Type: application/gzip" \
+#             -T "${asset_path}" \
+#             "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${asset_name}"
+
+#           asset_path="penpot-backend-extracted/penpot-backend-extracted.tar.gz"
+#           asset_name="penpot-backend-extracted.tar.gz"
+#           curl -L \
+#             -X POST \
+#             -H "Accept: application/vnd.github+json" \
+#             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#             -H "Content-Type: application/gzip" \
+#             -T "${asset_path}" \
+#             "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${asset_name}"
+
+
+#   update-existing-exporter-release:
+#     needs: check-and-prepare
+#     if: needs.check-and-prepare.outputs.release_exists == 'true'
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         include:
+#           - arch: amd64
+#             platform: linux/amd64
+#           - arch: arm64
+#             platform: linux/arm64
+#     steps:
+#       - name: Check if asset exists
+#         id: check_asset
+#         run: |
+#           ASSET_NAME="penpot-exporter-${{ matrix.arch }}-extracted.tar.gz"
+#           ASSET_EXISTS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ github.repository }}/releases/${{ needs.check-and-prepare.outputs.release_id }}/assets | jq ".[] | select(.name==\"${ASSET_NAME}\") | .name")
+#           if [ "$ASSET_EXISTS" = "\"$ASSET_NAME\"" ]; then
+#             echo "Asset already exists, skipping extraction and upload"
+#             echo "exists=true" >> $GITHUB_OUTPUT
+#           else
+#             echo "Asset does not exist, will extract and upload"
+#             echo "exists=false" >> $GITHUB_OUTPUT
+#           fi
+
+#       - name: Checkout code
+#         if: steps.check_asset.outputs.exists == 'false'
+#         uses: actions/checkout@v4
+
+#       - name: Set up QEMU
+#         if: steps.check_asset.outputs.exists == 'false'
+#         uses: docker/setup-qemu-action@v3
+
+#       - name: Set up Docker Buildx
+#         if: steps.check_asset.outputs.exists == 'false'
+#         uses: docker/setup-buildx-action@v3
+
+#       - name: Extract Docker image
+#         if: steps.check_asset.outputs.exists == 'false'
+#         run: |
+#           CONTAINER_ID=$(docker create --platform ${{ matrix.platform }} penpotapp/exporter:${{ needs.check-and-prepare.outputs.release_version }})
+#           mkdir -p extracted-${{ matrix.arch }}
+#           docker cp $CONTAINER_ID:/opt/penpot extracted-${{ matrix.arch }}/
+#           docker rm $CONTAINER_ID
+
+#       - name: Package extracted files
+#         if: steps.check_asset.outputs.exists == 'false'
+#         run: |
+#           cd extracted-${{ matrix.arch }}
+#           tar -czf ../penpot-exporter-${{ matrix.arch }}-extracted.tar.gz penpot
+
+#       - name: Upload Release Asset
+#         if: steps.check_asset.outputs.exists == 'false'
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#         run: |
+#           curl -L \
+#             -X POST \
+#             -H "Accept: application/vnd.github+json" \
+#             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#             -H "Content-Type: application/gzip" \
+#             -T "penpot-exporter-${{ matrix.arch }}-extracted.tar.gz" \
+#             "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ needs.check-and-prepare.outputs.release_id }}/assets?name=penpot-exporter-${{ matrix.arch }}-extracted.tar.gz"
+
+#   update-existing-frontend-release:
+#     needs: check-and-prepare
+#     if: needs.check-and-prepare.outputs.release_exists == 'true'
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Check if asset exists
+#         id: check_asset
+#         run: |
+#           ASSET_NAME="penpot-frontend-extracted.tar.gz"
+#           ASSET_EXISTS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ github.repository }}/releases/${{ needs.check-and-prepare.outputs.release_id }}/assets | jq ".[] | select(.name==\"${ASSET_NAME}\") | .name")
+#           if [ "$ASSET_EXISTS" = "\"$ASSET_NAME\"" ]; then
+#             echo "Asset already exists, skipping extraction and upload"
+#             echo "exists=true" >> $GITHUB_OUTPUT
+#           else
+#             echo "Asset does not exist, will extract and upload"
+#             echo "exists=false" >> $GITHUB_OUTPUT
+#           fi
+
+#       - name: Checkout code
+#         if: steps.check_asset.outputs.exists == 'false'
+#         uses: actions/checkout@v4
+
+#       - name: Set up QEMU
+#         if: steps.check_asset.outputs.exists == 'false'
+#         uses: docker/setup-qemu-action@v3
+
+#       - name: Set up Docker Buildx
+#         if: steps.check_asset.outputs.exists == 'false'
+#         uses: docker/setup-buildx-action@v3
+
+#       - name: Extract Docker image
+#         if: steps.check_asset.outputs.exists == 'false'
+#         run: |
+#           CONTAINER_ID=$(docker create --platform linux/amd64 penpotapp/frontend:${{ needs.check-and-prepare.outputs.release_version }})
+#           mkdir -p extracted-frontend
+#           docker cp $CONTAINER_ID:/var/www/app extracted-frontend/
+#           docker rm $CONTAINER_ID
+
+#       - name: Package extracted files
+#         if: steps.check_asset.outputs.exists == 'false'
+#         run: |
+#           cd extracted-frontend
+#           tar -czf ../penpot-frontend-extracted.tar.gz app
+
+#       - name: Upload Release Asset
+#         if: steps.check_asset.outputs.exists == 'false'
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#         run: |
+#           curl -L \
+#             -X POST \
+#             -H "Accept: application/vnd.github+json" \
+#             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#             -H "Content-Type: application/gzip" \
+#             -T "penpot-frontend-extracted.tar.gz" \
+#             "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ needs.check-and-prepare.outputs.release_id }}/assets?name=penpot-frontend-extracted.tar.gz"
+
+#   update-existing-backend-release:
+#     needs: check-and-prepare
+#     if: needs.check-and-prepare.outputs.release_exists == 'true'
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Check if asset exists
+#         id: check_asset
+#         run: |
+#           ASSET_NAME="penpot-backend-extracted.tar.gz"
+#           ASSET_EXISTS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ github.repository }}/releases/${{ needs.check-and-prepare.outputs.release_id }}/assets | jq ".[] | select(.name==\"${ASSET_NAME}\") | .name")
+#           if [ "$ASSET_EXISTS" = "\"$ASSET_NAME\"" ]; then
+#             echo "Asset already exists, skipping extraction and upload"
+#             echo "exists=true" >> $GITHUB_OUTPUT
+#           else
+#             echo "Asset does not exist, will extract and upload"
+#             echo "exists=false" >> $GITHUB_OUTPUT
+#           fi
+
+#       - name: Checkout code
+#         if: steps.check_asset.outputs.exists == 'false'
+#         uses: actions/checkout@v4
+
+#       - name: Set up QEMU
+#         if: steps.check_asset.outputs.exists == 'false'
+#         uses: docker/setup-qemu-action@v3
+
+#       - name: Set up Docker Buildx
+#         if: steps.check_asset.outputs.exists == 'false'
+#         uses: docker/setup-buildx-action@v3
+
+#       - name: Extract Docker image
+#         if: steps.check_asset.outputs.exists == 'false'
+#         run: |
+#           CONTAINER_ID=$(docker create --platform linux/amd64 penpotapp/backend:${{ needs.check-and-prepare.outputs.release_version }})
+#           mkdir -p extracted-backend
+#           docker cp $CONTAINER_ID:/opt/penpot/backend extracted-backend/
+#           docker rm $CONTAINER_ID
+
+#       - name: Package extracted files
+#         if: steps.check_asset.outputs.exists == 'false'
+#         run: |
+#           cd extracted-backend
+#           tar -czf ../penpot-backend-extracted.tar.gz backend
+
+#       - name: Upload Release Asset
+#         if: steps.check_asset.outputs.exists == 'false'
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#         run: |
+#           curl -L \
+#             -X POST \
+#             -H "Accept: application/vnd.github+json" \
+#             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#             -H "Content-Type: application/gzip" \
+#             -T "penpot-backend-extracted.tar.gz" \
+#             "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ needs.check-and-prepare.outputs.release_id }}/assets?name=penpot-backend-extracted.tar.gz"
