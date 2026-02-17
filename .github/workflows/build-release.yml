@@ -90,6 +90,9 @@ jobs:
 
     runs-on: ${{ matrix.platform.runs-on }}
     steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
       - name: Checkout syncstorage
         uses: actions/checkout@v4
         with:
