@@ -69,23 +69,24 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          - os-name: x86_64
-            runs-on: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
+          # - os-name: x86_64
+          #   runs-on: ubuntu-22.04
+          #   target: x86_64-unknown-linux-gnu
 
           - os-name: i686
             runs-on: ubuntu-22.04
             target: i686-unknown-linux-gnu
 
-          - os-name: arm64
-            runs-on: ubuntu-22.04-arm
-            target: aarch64-unknown-linux-gnu
+          # - os-name: arm64
+          #   runs-on: ubuntu-22.04-arm
+          #   target: aarch64-unknown-linux-gnu
 
-          - os-name: armv7
-            runs-on: ubuntu-22.04
-            target: armv7-unknown-linux-gnueabihf
+          # - os-name: armv7
+          #   runs-on: ubuntu-22.04
+          #   target: armv7-unknown-linux-gnueabihf
 
-          # more targets here ...
+    env:
+      CROSS_CONFIG: ${{ github.workspace }}/Cross.toml
 
     runs-on: ${{ matrix.platform.runs-on }}
     steps:
