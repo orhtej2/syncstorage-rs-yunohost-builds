@@ -1,2 +1,6 @@
 [target.i686-unknown-linux-gnu]
 image = "ghcr.io/orhtej2/cross-rs-debian-bookworm-i686@sha256:be8c553b60f6d530f1140152dd8e165fcd227610a277f7eb6020a64aac037c00"
+pre-build = [
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    "apt-get update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH libmariadb-dev-compat:$CROSS_DEB_ARCH"
+]
