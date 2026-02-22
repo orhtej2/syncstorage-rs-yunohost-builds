@@ -69,21 +69,25 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          # - os-name: x86_64
-          #   runs-on: ubuntu-22.04
-          #   target: x86_64-unknown-linux-gnu
+          - os-name: x86_64
+            runs-on: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            use-cross: false
 
           - os-name: i686
             runs-on: ubuntu-22.04
             target: i686-unknown-linux-gnu
+            use-cross: true
 
-          # - os-name: arm64
-          #   runs-on: ubuntu-22.04-arm
-          #   target: aarch64-unknown-linux-gnu
+          - os-name: arm64
+            runs-on: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-gnu
+            use-cross: false
 
-          # - os-name: armv7
-          #   runs-on: ubuntu-22.04
-          #   target: armv7-unknown-linux-gnueabihf
+          - os-name: armv7
+            runs-on: ubuntu-22.04
+            target: armv7-unknown-linux-gnueabihf
+            use-cross: true
 
     env:
       CROSS_CONFIG: ${{ github.workspace }}/Cross.toml
@@ -105,30 +109,41 @@ jobs:
         with:
           repository: 'diesel-rs/diesel'
           path: 'diesel'
-          ref: 'v2.3.6'
+          ref: 'v2.3.6'  # TODO: unhardcode
 
-      - name: Build binary
+      - name: Build diesel binary (cross)
+        if: ${{ matrix.platform.use-cross }}
         uses: houseabsolute/actions-rust-cross@v1
         with:
           command: build
           target: ${{ matrix.platform.target }}
-          args: "--bin diesel --no-default-features --features 'mysql' --release"
+          args: "--no-default-features --features 'mysql' --release"
           strip: true
-          working-directory: 'diesel'
+          working-directory: 'diesel/diesel_cli'
+
+      - name: Build diesel binary (native)
+        if: ${{ !matrix.platform.use-cross }}
+        working-directory: 'diesel/diesel_cli'
+        run: |
+          cargo build --no-default-features --features 'mysql' --target ${{ matrix.platform.target }} --release
+          
+
+     
     #   - name: Publish artifacts and release
     #     uses: houseabsolute/actions-rust-release@v0
     #     with:
     #       executable-name: ubi
     #       target: ${{ matrix.platform.target }}
 
-      - name: Build SyncStorage
+      - name: Build SyncStorage-rs (cross)
+        if: ${{ matrix.platform.use-cross }}
         uses: houseabsolute/actions-rust-cross@v1
         with:
           command: build
           target: ${{ matrix.platform.target }}
-          args: "--bin syncstorage --no-default-features --features 'syncstorage-db/mysql py_verifier' --release"
+          args: "--no-default-features --features 'syncstorage-db/mysql py_verifier' --release"
           strip: true
-          working-directory: 'syncstorage'
+          working-directory: 'syncstorage/syncstorage'
 
 
     #   - name: Upload artifact

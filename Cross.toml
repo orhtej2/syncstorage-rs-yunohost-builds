@@ -2,5 +2,12 @@
 image = "ghcr.io/orhtej2/cross-rs-debian-bookworm-i686@sha256:be8c553b60f6d530f1140152dd8e165fcd227610a277f7eb6020a64aac037c00"
 pre-build = [
     "dpkg --add-architecture $CROSS_DEB_ARCH",
-    "apt-get update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH libmariadb-dev-compat:$CROSS_DEB_ARCH"
+    "apt-get update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH libmariadb-dev-compat:$CROSS_DEB_ARCH pkg-config"
+]
+
+[target.armv7-unknown-linux-gnueabihf]
+image = "ghcr.io/orhtej2/cross-rs-debian-bookworm-armv7@sha256:e33d0eb8bf8a591d3c717464563fff740c70064ef3f8a2dc434a2d4ec51e3ebb"
+pre-build = [
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    "apt-get update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH libmariadb-dev-compat:$CROSS_DEB_ARCH pkg-config"
 ]
