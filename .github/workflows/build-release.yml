@@ -10,7 +10,13 @@ on:
         version:
             type: string
             description: Version to tag in this repo
-            required: true
+            required: false
+        diesel-version:
+            type: string
+            description: Version of diesel to build with
+            required: false
+            default: 'v2.3.6'
+
 #   schedule:
 #     - cron: '0 */8 * * *'  
 
@@ -44,7 +50,7 @@ jobs:
       - name: Check if release exists
         id: check_release
         run: |
-          RELEASE_TAG="${{ steps.get_version.outputs.RELEASE_VERSION }}-extracted"
+          RELEASE_TAG="${{ steps.get_version.outputs.RELEASE_VERSION }}"
           RELEASE_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/repos/${{ github.repository }}/releases/tags/${RELEASE_TAG})
           if [ "$RELEASE_EXISTS" = "200" ]; then
             echo "Release already exists, skipping creation"
@@ -58,7 +64,7 @@ jobs:
         id: get_release_id
         if: steps.check_release.outputs.exists == 'true'
         run: |
-          RELEASE_TAG="${{ steps.get_version.outputs.RELEASE_VERSION }}-extracted"
+          RELEASE_TAG="${{ steps.get_version.outputs.RELEASE_VERSION }}"
           RELEASE_ID=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/tags/${RELEASE_TAG} | jq -r .id)
           echo "RELEASE_ID=${RELEASE_ID}" >> $GITHUB_OUTPUT
 
@@ -109,7 +115,7 @@ jobs:
         with:
           repository: 'diesel-rs/diesel'
           path: 'diesel'
-          ref: 'v2.3.6'  # TODO: unhardcode
+          ref: ${{ inputs.diesel-version }}
 
       - name: Build diesel binary (cross)
         if: ${{ matrix.platform.use-cross }}
@@ -126,16 +132,20 @@ jobs:
         working-directory: 'diesel/diesel_cli'
         run: |
           cargo build --no-default-features --features 'mysql' --target ${{ matrix.platform.target }} --release
-          
+      
+      - name: Copy diesel binary to output
+        run: |
+          mkdir -p syncstorage/
+          zstd --ultra -o syncstorage/diesel_cli-${{ matrix.platform.target }}.zst diesel/diesel_cli/target/${{ matrix.platform.target }}/release/diesel diesel/target/${{ matrix.platform.target }}/release/diesel
+      
+      - name: Upload cargo artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: diesel_cli-${{ matrix.platform.target }}
+          path: syncstorage/diesel_cli-${{ matrix.platform.target }}.zst
 
-     
-    #   - name: Publish artifacts and release
-    #     uses: houseabsolute/actions-rust-release@v0
-    #     with:
-    #       executable-name: ubi
-    #       target: ${{ matrix.platform.target }}
 
-      - name: Build SyncStorage-rs (cross)
+      - name: Build SyncStorage-rs binary (cross)
         if: ${{ matrix.platform.use-cross }}
         uses: houseabsolute/actions-rust-cross@v1
         with:
@@ -143,73 +153,66 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: "--no-default-features --features 'syncstorage-db/mysql py_verifier' --release"
           strip: true
-          working-directory: 'syncstorage/syncstorage'
+          working-directory: 'syncstorage/syncserver'
+
+      - name: Build SyncStorage-rs binary (native)
+        if: ${{ !matrix.platform.use-cross }}
+        working-directory: 'syncstorage/syncserver'
+        run: |
+          cargo build --no-default-features --features 'syncstorage-db/mysql py_verifier' --target ${{ matrix.platform.target }} --release
+
+      - name: Copy SyncStorage-rs binary to output
+        run: |
+          mkdir -p syncstorage/
+          zstd --ultra -o syncstorage/syncstorage_rs-${{ matrix.platform.target }}.zst syncstorage/syncserver/target/${{ matrix.platform.target }}/release/syncstorage_rs syncstorage/syncserver/target/${{ matrix.platform.target }}/release/syncstorage_rs
+      
+      - name: Upload syncstorage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: syncstorage-${{ matrix.platform.target }}
+          path: syncstorage/syncstorage_rs-${{ matrix.platform.target }}.zst
 
 
-    #   - name: Upload artifact
-    #     uses: actions/upload-artifact@v4
-    #     with:
-    #       name: penpot-exporter-${{ matrix.arch }}-extracted
-    #       path: penpot-exporter-${{ matrix.arch }}-extracted.tar.gz
+  create-release:
+    needs: [check-and-prepare, build-release]
+    if: needs.check-and-prepare.outputs.release_exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.check-and-prepare.outputs.release_version }}
+          name: SyncStorage-rs prebuilts, version ${{ needs.check-and-prepare.outputs.release_version }}
+          body: |
+            This release contains:
+              - prebuilt binaries of diesel (mysql-only, version ${{ inputs.diesel-version }})
+                Original release: https://github.com/diesel-rs/diesel/tree/${{ inputs.diesel-version }}
+              - prebuilt binaries of syncstorage_rs (with mysql and py_verifier features enabled, version ${{ inputs.ref }})
+                Original release: https://github.com/mozilla-services/syncstorage-rs/tree/${{ inputs.ref }}
+          draft: false
+          prerelease: false
 
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
 
-#   create-release:
-#     needs: [check-and-prepare, extract-and-release-exporter, extract-and-release-frontend, extract-and-release-backend]
-#     if: needs.check-and-prepare.outputs.release_exists == 'false'
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Create Release
-#         id: create_release
-#         uses: softprops/action-gh-release@v2
-#         env:
-#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#         with:
-#           tag_name: ${{ needs.check-and-prepare.outputs.release_version }}-extracted
-#           name: Extracted Binaries ${{ needs.check-and-prepare.outputs.release_version }}
-#           body: |
-#             This release contains extracted binaries from the Penpot Docker images for multiple Linux architectures.
-#             Original release: https://github.com/penpot/penpot/releases/tag/${{ needs.check-and-prepare.outputs.release_version }}
-#           draft: false
-#           prerelease: false
-
-#       - name: Download all artifacts
-#         uses: actions/download-artifact@v4
-
-#       - name: Upload Release Assets
-#         env:
-#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#         run: |
-#           for arch in amd64 arm64; do
-#             asset_path="penpot-exporter-${arch}-extracted/penpot-exporter-${arch}-extracted.tar.gz"
-#             asset_name="penpot-exporter-${arch}-extracted.tar.gz"
-#             curl -L \
-#               -X POST \
-#               -H "Accept: application/vnd.github+json" \
-#               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-#               -H "Content-Type: application/gzip" \
-#               -T "${asset_path}" \
-#               "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${asset_name}"
-#           done
-
-#           asset_path="penpot-frontend-extracted/penpot-frontend-extracted.tar.gz"
-#           asset_name="penpot-frontend-extracted.tar.gz"
-#           curl -L \
-#             -X POST \
-#             -H "Accept: application/vnd.github+json" \
-#             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-#             -H "Content-Type: application/gzip" \
-#             -T "${asset_path}" \
-#             "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${asset_name}"
-
-#           asset_path="penpot-backend-extracted/penpot-backend-extracted.tar.gz"
-#           asset_name="penpot-backend-extracted.tar.gz"
-#           curl -L \
-#             -X POST \
-#             -H "Accept: application/vnd.github+json" \
-#             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-#             -H "Content-Type: application/gzip" \
-#             -T "${asset_path}" \
-#             "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${asset_name}"
+      - name: Upload Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for asset in syncstorage/*.zst; do
+            asset_path="${asset}"
+            asset_name="$(basename ${asset})"
+            curl -L \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Content-Type: application/zstd" \
+              -T "${asset_path}" \
+              "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${asset_name}"
+          done
 
 
 #   update-existing-exporter-release:
