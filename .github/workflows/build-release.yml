@@ -136,7 +136,7 @@ jobs:
       - name: Copy diesel binary to output
         run: |
           mkdir -p syncstorage/
-          pushd diesel/diesel_cli/target/${{ matrix.platform.target }}/release/
+          pushd diesel/target/${{ matrix.platform.target }}/release/
             zstd --ultra -o ${{ github.workspace }}/syncstorage/diesel_cli-${{ matrix.platform.target }}.zst diesel
           popd
       
@@ -166,7 +166,7 @@ jobs:
       - name: Copy SyncStorage-rs binary to output
         run: |
           mkdir -p syncstorage/
-          pushd syncstorage/syncserver/target/${{ matrix.platform.target }}/release/
+          pushd syncstorage/target/${{ matrix.platform.target }}/release/
             zstd --ultra -o ${{ github.workspace }}/syncstorage/syncstorage_rs-${{ matrix.platform.target }}.zst syncstorage
           popd
       
