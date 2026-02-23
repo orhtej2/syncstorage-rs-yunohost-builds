@@ -167,14 +167,14 @@ jobs:
         run: |
           mkdir -p syncstorage/
           pushd syncstorage/target/${{ matrix.platform.target }}/release/
-            zstd --ultra -o ${{ github.workspace }}/syncstorage/syncstorage_rs-${{ matrix.platform.target }}.zst syncstorage
+            zstd --ultra -o ${{ github.workspace }}/syncstorage/syncserver-${{ matrix.platform.target }}.zst syncserver
           popd
       
       - name: Upload syncstorage artifact
         uses: actions/upload-artifact@v4
         with:
           name: syncstorage-${{ matrix.platform.target }}
-          path: syncstorage/syncstorage_rs-${{ matrix.platform.target }}.zst
+          path: syncstorage/syncserver-${{ matrix.platform.target }}.zst
 
 
   create-release:
