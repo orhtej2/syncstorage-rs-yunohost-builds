@@ -136,7 +136,9 @@ jobs:
       - name: Copy diesel binary to output
         run: |
           mkdir -p syncstorage/
-          zstd --ultra -o syncstorage/diesel_cli-${{ matrix.platform.target }}.zst diesel/diesel_cli/target/${{ matrix.platform.target }}/release/diesel diesel/target/${{ matrix.platform.target }}/release/diesel
+          pushd diesel/diesel_cli/target/${{ matrix.platform.target }}/release/
+            zstd --ultra -o ${{ github.workspace }}/syncstorage/diesel_cli-${{ matrix.platform.target }}.zst diesel
+          popd
       
       - name: Upload cargo artifact
         uses: actions/upload-artifact@v4
@@ -164,7 +166,9 @@ jobs:
       - name: Copy SyncStorage-rs binary to output
         run: |
           mkdir -p syncstorage/
-          zstd --ultra -o syncstorage/syncstorage_rs-${{ matrix.platform.target }}.zst syncstorage/syncserver/target/${{ matrix.platform.target }}/release/syncstorage_rs syncstorage/syncserver/target/${{ matrix.platform.target }}/release/syncstorage_rs
+          pushd syncstorage/syncserver/target/${{ matrix.platform.target }}/release/
+            zstd --ultra -o ${{ github.workspace }}/syncstorage/syncstorage_rs-${{ matrix.platform.target }}.zst syncstorage
+          popd
       
       - name: Upload syncstorage artifact
         uses: actions/upload-artifact@v4
