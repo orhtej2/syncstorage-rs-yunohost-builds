@@ -51,9 +51,9 @@ jobs:
         id: set_version
         run: |
           if [ -z "${{ steps.get_version.outputs.RELEASE_VERSION }}" ]; then
-            echo "RELEASE_TAG=${{ steps.get_version.outputs.RELEASE_VERSION }}" >> $GITHUB_OUTPUT
-          else
             echo "RELEASE_TAG=${{ steps.copy_version.outputs.RELEASE_VERSION }}" >> $GITHUB_OUTPUT
+          else
+            echo "RELEASE_TAG=${{ steps.get_version.outputs.RELEASE_VERSION }}" >> $GITHUB_OUTPUT
           fi
       - name: Check if release exists
         id: check_release
