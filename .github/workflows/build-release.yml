@@ -29,7 +29,7 @@ jobs:
   check-and-prepare:
     runs-on: ubuntu-latest
     outputs:
-      release_version: ${{ steps.get_version.outputs.RELEASE_VERSION }}
+      release_version: ${{ steps.set_version.outputs.RELEASE_TAG }}
       release_ref: ${{ steps.get_version.outputs.RELEASE_REF }}
       release_exists: ${{ steps.check_release.outputs.exists }}
       # release_id: ${{ steps.get_release_id.outputs.RELEASE_ID }}
@@ -47,16 +47,18 @@ jobs:
           LATEST_RELEASE=$(curl -s https://api.github.com/repos/penpot/penpot/releases/latest | jq -r .tag_name)
           echo "RELEASE_VERSION=${LATEST_RELEASE}" >> $GITHUB_OUTPUT
           echo "RELEASE_REF=${LATEST_RELEASE}" >> $GITHUB_OUTPUT
-
+      - name: Set version
+        id: set_version
+        run: |
+          if [ -z "${{ steps.get_version.outputs.RELEASE_VERSION }}" ]; then
+            echo "RELEASE_TAG=${{ steps.get_version.outputs.RELEASE_VERSION }}" >> $GITHUB_OUTPUT
+          else
+            echo "RELEASE_TAG=${{ steps.copy_version.outputs.RELEASE_VERSION }}" >> $GITHUB_OUTPUT
+          fi
       - name: Check if release exists
         id: check_release
         run: |
-          RELEASE_TAG=""
-          if [ -z "${{ steps.get_version.outputs.RELEASE_VERSION }}" ]; then
-            RELEASE_TAG="${{ steps.get_version.outputs.RELEASE_VERSION }}"
-          else
-            RELEASE_TAG="${{ steps.copy_version.outputs.RELEASE_VERSION }}"
-          fi
+          RELEASE_TAG="${{ steps.set_version.outputs.RELEASE_TAG }}"
           RELEASE_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/repos/${{ github.repository }}/releases/tags/${RELEASE_TAG})
           if [ "$RELEASE_EXISTS" = "200" ]; then
             echo "Release already exists, skipping creation"
