@@ -214,6 +214,9 @@ jobs:
           path: 'syncstorage'
           merge-multiple: true
 
+      - name: Display structure of downloaded files
+        run: ls -R syncstorage
+
       - name: Upload Release Assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
