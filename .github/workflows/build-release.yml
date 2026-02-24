@@ -179,7 +179,7 @@ jobs:
 
   create-release:
     needs: [check-and-prepare, build-release]
-    if: needs.check-and-prepare.outputs.release_exists == 'false'
+    # if: needs.check-and-prepare.outputs.release_exists == 'false'
     runs-on: ubuntu-latest
     steps:
       - name: Create Release
