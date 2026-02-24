@@ -32,10 +32,11 @@ jobs:
       release_version: ${{ steps.get_version.outputs.RELEASE_VERSION }}
       release_ref: ${{ steps.get_version.outputs.RELEASE_REF }}
       release_exists: ${{ steps.check_release.outputs.exists }}
-      release_id: ${{ steps.get_release_id.outputs.RELEASE_ID }}
+      # release_id: ${{ steps.get_release_id.outputs.RELEASE_ID }}
     steps:
       - name: Copy from params
         if: ${{ inputs.version != '' }}
+        id: copy_version
         run: |
           echo "RELEASE_VERSION=${{ inputs.version }}" >> $GITHUB_OUTPUT
           echo "RELEASE_REF=${{ inputs.ref }}" >> $GITHUB_OUTPUT
@@ -50,7 +51,12 @@ jobs:
       - name: Check if release exists
         id: check_release
         run: |
-          RELEASE_TAG="${{ steps.get_version.outputs.RELEASE_VERSION }}"
+          RELEASE_TAG=""
+          if [ -z "${{ steps.get_version.outputs.RELEASE_VERSION }}" ]; then
+            RELEASE_TAG="${{ steps.get_version.outputs.RELEASE_VERSION }}"
+          else
+            RELEASE_TAG="${{ steps.copy_version.outputs.RELEASE_VERSION }}"
+          fi
           RELEASE_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/repos/${{ github.repository }}/releases/tags/${RELEASE_TAG})
           if [ "$RELEASE_EXISTS" = "200" ]; then
             echo "Release already exists, skipping creation"
@@ -60,13 +66,13 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Get Release ID
-        id: get_release_id
-        if: steps.check_release.outputs.exists == 'true'
-        run: |
-          RELEASE_TAG="${{ steps.get_version.outputs.RELEASE_VERSION }}"
-          RELEASE_ID=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/tags/${RELEASE_TAG} | jq -r .id)
-          echo "RELEASE_ID=${RELEASE_ID}" >> $GITHUB_OUTPUT
+      # - name: Get Release ID
+      #   id: get_release_id
+      #   if: steps.check_release.outputs.exists == 'true'
+      #   run: |
+      #     RELEASE_TAG="${{ steps.get_version.outputs.RELEASE_VERSION }}"
+      #     RELEASE_ID=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/tags/${RELEASE_TAG} | jq -r .id)
+      #     echo "RELEASE_ID=${RELEASE_ID}" >> $GITHUB_OUTPUT
 
   build-release:
     needs: check-and-prepare
