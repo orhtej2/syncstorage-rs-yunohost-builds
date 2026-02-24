@@ -21,7 +21,7 @@ image = "ghcr.io/orhtej2/cross-rs-debian-bookworm-armv7@sha256:e33d0eb8bf8a591d3
 pre-build = [
     "dpkg --add-architecture $CROSS_DEB_ARCH",
     "apt-get update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH libmariadb-dev-compat:$CROSS_DEB_ARCH pkg-config apt-utils python3",
-    "curl -L https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-3.11.14+20260211-armv7-unknown-linux-gnueabihf-install_only_stripped.tar.gz | tar -xz -C /opt",
+    "curl -L https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-3.11.14+20260211-armv7-unknown-linux-gnueabihf-install_only.tar.gz | tar -xz -C /opt",
 ]
 env.passthrough = [
     "PKG_CONFIG_PATH=/opt/python/lib/pkgconfig/:/usr/lib/arm-linux-gnueabihf/pkgconfig/",

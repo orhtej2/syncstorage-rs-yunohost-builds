@@ -145,14 +145,14 @@ jobs:
         run: |
           mkdir -p syncstorage/
           pushd diesel/target/${{ matrix.platform.target }}/release/
-            zstd --ultra -o ${{ github.workspace }}/syncstorage/diesel_cli-${{ matrix.platform.target }}.zst diesel
+            zstd --ultra -o ${{ github.workspace }}/syncstorage/diesel_cli-${{ inputs.diesel-version }}-${{ matrix.platform.target }}.zst diesel
           popd
       
       - name: Upload cargo artifact
         uses: actions/upload-artifact@v4
         with:
-          name: diesel_cli-${{ matrix.platform.target }}.zst
-          path: syncstorage/diesel_cli-${{ matrix.platform.target }}.zst
+          name: diesel_cli-${{ matrix.platform.target }}
+          path: syncstorage/diesel_cli-${{ inputs.diesel-version }}-${{ matrix.platform.target }}.zst
 
 
       - name: Build SyncStorage-rs binary (cross)
@@ -175,14 +175,14 @@ jobs:
         run: |
           mkdir -p syncstorage/
           pushd syncstorage/target/${{ matrix.platform.target }}/release/
-            zstd --ultra -o ${{ github.workspace }}/syncstorage/syncserver-${{ matrix.platform.target }}.zst syncserver
+            zstd --ultra -o ${{ github.workspace }}/syncstorage/syncserver-${{ inputs.version }}-${{ matrix.platform.target }}.zst syncserver
           popd
       
       - name: Upload syncstorage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: syncstorage-${{ matrix.platform.target }}.zst
-          path: syncstorage/syncserver-${{ matrix.platform.target }}.zst
+          name: syncstorage-${{ matrix.platform.target }}
+          path: syncstorage/syncserver-${{ inputs.version }}-${{ matrix.platform.target }}.zst
 
 
   create-release:
