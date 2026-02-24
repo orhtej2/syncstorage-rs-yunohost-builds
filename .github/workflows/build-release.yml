@@ -212,6 +212,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: 'syncstorage'
+          merge-multiple: true
 
       - name: Upload Release Assets
         env:

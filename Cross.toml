@@ -25,4 +25,5 @@ pre-build = [
 ]
 env.passthrough = [
     "PKG_CONFIG_PATH=/opt/python/lib/pkgconfig/:/usr/lib/arm-linux-gnueabihf/pkgconfig/",
+    "PYO3_CROSS_PYTHON_VERSION=3",
 ]
