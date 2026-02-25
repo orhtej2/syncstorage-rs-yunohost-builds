@@ -86,22 +86,18 @@ jobs:
           - os-name: x86_64
             runs-on: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            use-cross: false
 
           - os-name: i686
             runs-on: ubuntu-22.04
             target: i686-unknown-linux-gnu
-            use-cross: true
 
           - os-name: arm64
             runs-on: ubuntu-22.04-arm
             target: aarch64-unknown-linux-gnu
-            use-cross: false
 
           - os-name: armv7
             runs-on: ubuntu-22.04
             target: armv7-unknown-linux-gnueabihf
-            use-cross: true
 
     env:
       CROSS_CONFIG: ${{ github.workspace }}/Cross.toml
@@ -125,8 +121,7 @@ jobs:
           path: 'diesel'
           ref: ${{ inputs.diesel-version }}
 
-      - name: Build diesel binary (cross)
-        if: ${{ matrix.platform.use-cross }}
+      - name: Build diesel binary
         uses: houseabsolute/actions-rust-cross@v1
         with:
           command: build
@@ -135,12 +130,6 @@ jobs:
           strip: true
           working-directory: 'diesel/diesel_cli'
 
-      - name: Build diesel binary (native)
-        if: ${{ !matrix.platform.use-cross }}
-        working-directory: 'diesel/diesel_cli'
-        run: |
-          cargo build --no-default-features --features 'mysql' --target ${{ matrix.platform.target }} --release
-      
       - name: Copy diesel binary to output
         run: |
           mkdir -p syncstorage/
@@ -155,8 +144,7 @@ jobs:
           path: syncstorage/diesel_cli-${{ inputs.diesel-version }}-${{ matrix.platform.target }}.zst
 
 
-      - name: Build SyncStorage-rs binary (cross)
-        if: ${{ matrix.platform.use-cross }}
+      - name: Build SyncStorage-rs binary
         uses: houseabsolute/actions-rust-cross@v1
         with:
           command: build
@@ -164,12 +152,6 @@ jobs:
           args: "--no-default-features --features 'syncstorage-db/mysql py_verifier' --release"
           strip: true
           working-directory: 'syncstorage/syncserver'
-
-      - name: Build SyncStorage-rs binary (native)
-        if: ${{ !matrix.platform.use-cross }}
-        working-directory: 'syncstorage/syncserver'
-        run: |
-          cargo build --no-default-features --features 'syncstorage-db/mysql py_verifier' --target ${{ matrix.platform.target }} --release
 
       - name: Copy SyncStorage-rs binary to output
         run: |

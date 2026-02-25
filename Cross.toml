@@ -15,6 +15,22 @@ pre-build = [
     "apt-get install --assume-yes python3-dev:$CROSS_DEB_ARCH",
 ]
 
+[target.x86_64-unknown-linux-gnu]
+image = "ghcr.io/orhtej2/cross-rs-debian-bookworm-x86_64@sha256:e3288b7cab03591f75915cfdf8f793fd9b2c0c742dff6469a6129c61fb39580f"
+pre-build = [
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    "apt-get update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH libmariadb-dev-compat:$CROSS_DEB_ARCH pkg-config apt-utils python3",
+    "apt-get install --assume-yes python3-dev:$CROSS_DEB_ARCH",
+]
+
+[target.aarch64-unknown-linux-gnu]
+image = "ghcr.io/orhtej2/cross-rs-debian-bookworm-aarch64@sha256:90479002cac7ded1c3bf18fa91574f011563c61dc0d30a6c6083e851561785b9"
+pre-build = [
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    "apt-get update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH libmariadb-dev-compat:$CROSS_DEB_ARCH pkg-config apt-utils python3",
+    "apt-get install --assume-yes python3-dev:$CROSS_DEB_ARCH",
+]
+
 
 [target.armv7-unknown-linux-gnueabihf]
 image = "ghcr.io/orhtej2/cross-rs-debian-bookworm-armv7@sha256:e33d0eb8bf8a591d3c717464563fff740c70064ef3f8a2dc434a2d4ec51e3ebb"
