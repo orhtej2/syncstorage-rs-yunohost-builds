@@ -92,7 +92,7 @@ jobs:
             target: i686-unknown-linux-gnu
 
           - os-name: arm64
-            runs-on: ubuntu-22.04-arm
+            runs-on: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
 
           - os-name: armv7
@@ -127,7 +127,6 @@ jobs:
           command: build
           target: ${{ matrix.platform.target }}
           args: "--no-default-features --features 'mysql' --release"
-          strip: true
           working-directory: 'diesel/diesel_cli'
 
       - name: Copy diesel binary to output
@@ -150,7 +149,6 @@ jobs:
           command: build
           target: ${{ matrix.platform.target }}
           args: "--no-default-features --features 'syncstorage-db/mysql py_verifier' --release"
-          strip: true
           working-directory: 'syncstorage/syncserver'
 
       - name: Copy SyncStorage-rs binary to output
