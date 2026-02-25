@@ -128,6 +128,7 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: "--no-default-features --features 'mysql' --release"
           working-directory: 'diesel/diesel_cli'
+          force-use-cross: true
 
       - name: Copy diesel binary to output
         run: |
@@ -150,6 +151,7 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: "--no-default-features --features 'syncstorage-db/mysql py_verifier' --release"
           working-directory: 'syncstorage/syncserver'
+          force-use-cross: true
 
       - name: Copy SyncStorage-rs binary to output
         run: |
@@ -391,3 +393,4 @@ jobs:
 #             -H "Content-Type: application/gzip" \
 #             -T "penpot-backend-extracted.tar.gz" \
 #             "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ needs.check-and-prepare.outputs.release_id }}/assets?name=penpot-backend-extracted.tar.gz"
+
